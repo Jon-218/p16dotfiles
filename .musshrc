@@ -1,0 +1,292 @@
+# 定义关联数组
+typeset -A mc_dict
+mc_dict["rock"]="controller619"
+mc_dict["dnc"]="controller759"
+mc_dict["myj"]="controller828"    
+mc_dict["bps1"]="controller758"
+mc_dict["bps2"]="controller761"
+mc_dict["frsh1"]="controller794"
+mc_dict["frsh2"]="controller792"
+mc_dict["frsh3"]="controller778"
+mc_dict["frsh4"]="controller782"
+mc_dict["frsh5"]="controller793"
+mc_dict["frsh6"]="controller784"
+mc_dict["frsh7"]="controller780"
+mc_dict["frsh8"]="controller786"
+mc_dict["frsh9"]="controller787"
+mc_dict["frsh10"]="controller791"
+mc_dict["frsh11"]="controller795"
+mc_dict["frsh12"]="controller789"
+mc_dict["frsh13"]="controller788"
+mc_dict["frsh14"]="controller777"
+mc_dict["frsh15"]="controller790"
+mc_dict["lydial"]="controller898"
+mc_dict["lydiar"]="controller756"
+mc_dict["stb1"]="controller1030"
+mc_dict["stb2"]="controller1035"
+mc_dict["stb3"]="controller1032"
+mc_dict["stb4"]="controller1031"
+mc_dict["stb5"]="controller1037"
+mc_dict["stb6"]="controller1036"
+mc_dict["mt31"]="controller1153"
+mc_dict["mt32"]="controller1155"
+mc_dict["mt41"]="controller1164"
+mc_dict["mt42"]="controller1165"
+mc_dict["mt43"]="controller1168"
+mc_dict["mt44"]="controller1160"
+mc_dict["mt45"]="controller1157"
+mc_dict["mt46"]="controller1152"
+# mc_dict["mt51"]="controller1159"
+mc_dict["mt51"]="controller1038"
+mc_dict["mt52"]="controller1158"
+mc_dict["mt53"]="controller1162"
+mc_dict["mt54"]="controller1154"
+mc_dict["mt55"]="controller1167"
+mc_dict["mt56"]="controller1161"
+mc_dict["mt61"]="controller1149"
+mc_dict["mt62"]="controller1140"
+mc_dict["hc"]="controller1039"
+mc_dict["825"]="controller825"
+mc_dict["fjo1"]="controller1148"
+mc_dict["fjo2"]="controller1146"
+mc_dict["fji1"]="controller1139"
+mc_dict["fji2"]="controller1061"
+# mc_dict["dev"]="controllertestmcx16"
+
+typeset -A vc_dict
+vc_dict["rock"]="controller724"
+vc_dict["dnc"]="controller740"
+vc_dict["myj"]="controller714"
+vc_dict["bps1"]="controller739"
+vc_dict["bps2"]="controller723"
+vc_dict["frsh1"]="controller703"
+vc_dict["frsh2"]="controller711"
+vc_dict["frsh3"]="controller713"
+vc_dict["frsh4"]="controller709"
+vc_dict["frsh5"]="controller710"
+vc_dict["frsh6"]="controller712"
+vc_dict["frsh7"]="controller699"
+vc_dict["frsh8"]="controller700"
+vc_dict["frsh9"]="controller706"
+vc_dict["frsh10"]="controller704"
+vc_dict["frsh11"]="controller701"
+vc_dict["frsh12"]="controller702"
+vc_dict["frsh13"]="controller708"
+vc_dict["frsh14"]="controller705"
+vc_dict["frsh15"]="controller707"
+vc_dict["lydial"]="controller964"
+vc_dict["lydiar"]="controller755"
+vc_dict["825"]="controller587"
+
+
+mcname() {
+    mcName="controller$1"
+    if [[ "${(k)mc_dict}" =~ "$1" ]]; then
+        mcName=${mc_dict["$1"]}
+    fi
+    ping -w 1 -c 1 $mcName > /dev/null
+    if [ ! $? -eq 0 ]; then
+        mcName="sgwcn+$mcName"
+    fi
+    echo $mcName
+}
+
+vcname() {
+    mcName=$(mcname $1)
+    if [[ "${(k)vc_dict}" =~ "$1" ]]; then
+        vcName=${vc_dict["$1"]}
+        vcName="v+$mcName+${vc_dict["$1"]}"
+        echo $vcName
+    else
+        echo $mcName
+    fi
+
+}
+
+copyh5() {
+
+    cycleindex=$2
+
+    if [ ${#cycleindex} -lt 4 ]; then
+        sshCmd="mujin_detectors_copyh5logs.py c+$(vcname $1) --last $2 --targetdir $3 $4 $5 $6 $7"
+    else
+        sshCmd="mujin_detectors_copyh5logs.py c+$(vcname $1) --cycleindex $2 --targetdir $3 $4 $5 $6 $7"
+    fi
+
+    # sshCmd="mujin_detectors_copyh5logs.py $(vcname $1) --cycleindex $2 --targetdir $3 $4 $5 $6 $7"
+    echo $sshCmd
+    eval $sshCmd
+}
+
+mssh() {
+    if [[ $1 == "c" ]]; then
+        # echo "ssh container"
+        controllerName="c+$(mcname $2) $3"
+    elif [[ $1 == "l" ]]; then
+        controllerName="-L 5909:localhost:5900 c+$(mcname $2) $3"
+    else
+        controllerName="$(mcname $1) $2"
+    fi
+
+    sshCmd="ssh $controllerName"
+    echo $sshCmd
+    eval $sshCmd
+}
+
+vssh() {
+    if [[ $1 == "c" ]]; then
+        # echo "ssh container"
+        controllerName="c+$(vcname $2) $3"
+    elif [[ $1 == "l" ]]; then
+        controllerName="-L 5909:localhost:5900 c+$(vcname $2) $3"
+    elif [[ $1 == "h5" ]]; then
+        controllerName="$(vcname $2) ls /var/log/mujin/detectors -ltr | tail -n 10"
+    else
+        controllerName="$(vcname $1) $2"
+    fi
+
+    sshCmd="ssh $controllerName"
+    echo $sshCmd
+    eval $sshCmd
+}
+
+ws_make() {
+    CURRENT_WORKING_DIR=$(pwd)
+    MUJIN_WORKSPACE_ID=$1
+
+    mkdir -p ${HOME}/ws_cn/${MUJIN_WORKSPACE_ID}/checkoutroot
+    cd ${WORKSPACES_ROOT}/ws_cn/${MUJIN_WORKSPACE_ID}
+    git clone ssh://git@gitlab.mujin.com.cn:2224/tmpjhbuild/jhbuildcommon.git
+    git clone ssh://git@gitlab.mujin.com.cn:2224/tmpjhbuild/jhbuildappcontroller.git
+    cd ${WORKSPACES_ROOT}/ws_cn/${MUJIN_WORKSPACE_ID}/jhbuildcommon
+    git clone ssh://git@gitlab.mujin.com.cn:2224/3rdparty/jhbuild.git
+
+    cd ${WORKSPACES_ROOT}/ws_cn/${MUJIN_WORKSPACE_ID}/jhbuildappcontroller
+    git checkout stb_58ae_cn
+    # mujin_jhbuildcommon_updatejhbuildcommon.bash
+    # mujin_jhbuildcommon_initjhbuild.bash
+    ws_set ${MUJIN_WORKSPACE_ID}
+    cd ${MUJINJH_APPCONTROLLER_HOME}
+    jhbuild sysdeps --install
+    ws_set ${MUJIN_WORKSPACE_ID}
+    cd ${CURRENT_WORKING_DIR}
+}
+
+ws_set() {
+    MUJIN_WORKSPACE_ID=$1
+    export MUJIN_WORKSPACE_ID=$1
+    MUJIN_WORKSPACE_ROOT=${HOME}/ws_cn/${MUJIN_WORKSPACE_ID}
+
+    # Clear previous MUJIN env variables
+    unset CMAKE_PREFIX_PATH
+    unset PYTHONPATH
+    unset QML_IMPORT_PATH
+    unset OPENRAVE_PLUGINS
+    unset HDF5_PLUGIN_PATH
+    unset GENICAM_GENTL64_PATH
+    unset QML2_IMPORT_PATH
+    unset OPENRAVE_DATA
+    unset PKG_CONFIG_PATH
+
+    unset MUJIN_SHUGO_SHARE_DIR
+
+    unset MUJIN_TESTAPPCONTROLLER_SHARE_DIR
+    unset MUJIN_RESOURCES_SHARE_DIR
+    unset MUJIN_ROBOTS_SHARE_DIR
+    unset QT_PLUGIN_PATH
+    unset MUJIN_APPCONTROLLER_HOME
+    unset MUJIN_APPFRPIECEPICKINGWITHQPS_SHARE_DIR
+    unset MUJIN_TESTREGISTRATION_SHARE_DIR
+
+    MUJIN_TESTAPPCONTROLLER_SHARE_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot/appcontroller/testappcontroller
+    MUJIN_RESOURCES_SHARE_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot/resources
+    MUJIN_ROBOTS_SHARE_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot/robots
+    QT_PLUGIN_PATH=${MUJIN_WORKSPACE_ROOT}/${MUJIN_WORKSPACE_JHBUILDAPP_NAME}/install/lib/plugins:
+    MUJIN_APPCONTROLLER_HOME=${MUJIN_WORKSPACE_ROOT}/checkoutroot/appcontroller
+    MUJIN_APPFRPIECEPICKINGWITHQPS_SHARE_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot/appfrpiecepickingwithqps
+    MUJIN_TESTREGISTRATION_SHARE_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot/registration/testregistration
+
+    for VAR in $(printenv | grep ^MUJIN | sed -e 's/=.*$//'); do
+        unset -f ${VAR}
+    done
+    export MUJIN_WORKSPACE_JHBUILDAPP_NAME="jhbuildappcontroller"
+    echo -e "Configuring Mujin environment: \033[01;32m${MUJIN_WORKSPACE_ID}\033[00m"
+    # Update .jhbuildrc
+    if [ "$(diff -q ${MUJIN_WORKSPACE_ROOT}/${MUJIN_WORKSPACE_JHBUILDAPP_NAME}/.jhbuildrc ${HOME}/.jhbuildrc)" != "" ]; then
+        echo "Updating ~/.jhbuildrc"
+        cp ${MUJIN_WORKSPACE_ROOT}/${MUJIN_WORKSPACE_JHBUILDAPP_NAME}/.jhbuildrc ${HOME}/
+    fi
+    export LD_LIBRARY_PATH="/usr/local/lib"
+    unset PATH
+    export PATH=$ORG_PATH:/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin
+    export PATH=/usr/lib/ccache:$PATH
+    export PATH=/snap/bin:/usr/sbin:/sbin:${HOME}/mujin/ssh/bin:$PATH
+    YELLOW='\033[1;33m'
+    GREEN='\033[0;32m'
+    RED='\033[0;31m'
+    NC='\033[0m' # No Color
+    display_text() {
+        # $1 color
+        # $2 text
+        echo -e "$1$2${NC}"
+    }
+    log_info() {
+        display_text $NC "$1"
+    }
+    log_debug() {
+        display_text $GREEN "$1"
+    }
+    log_warn() {
+        display_text $YELLOW "$1"
+    }
+    log_error() {
+        display_text $RED "$1"
+    }
+    if [[ $PATH != *"${MUJIN_WORKSPACE_ROOT}/jhbuildcommon/bin"* ]]; then
+        export PATH="${MUJIN_WORKSPACE_ROOT}/jhbuildcommon/bin:$PATH"
+    fi
+    export MUJINJH_COMMON=${MUJIN_WORKSPACE_ROOT}/jhbuildcommon
+    if [ -f "${MUJINJH_COMMON}/jhbuild/contrib/jhbuild_completion.bash" ]; then
+        source "${MUJINJH_COMMON}/jhbuild/contrib/jhbuild_completion.bash"
+    fi
+
+    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]$(__git_ps1)\n╰─\[\033[01;32m\](workspace:${MUJIN_WORKSPACE_ID}) \[\033[00m\]$ '
+    export MUJIN_JHBUILD_CHECKOUT_DIR=${MUJIN_WORKSPACE_ROOT}/checkoutroot
+    export MUJINJH_APPCONTROLLER_HOME=${MUJIN_WORKSPACE_ROOT}/${MUJIN_WORKSPACE_JHBUILDAPP_NAME}
+    export D=${MUJIN_WORKSPACE_ROOT}/checkoutroot/detectors/python/mujindetection/
+    # alias unitest="MUJIN_RESOURCES_DIR=/testdata mujin_testcontrollercommon_runpytest.py ${MUJIN_WORKSPACE_ROOT}/checkoutroot/detectors/testdetectors/python/mujintestdetection -m askulbox0*fast"
+    # alias pytst="pytest -p no:cacheprovider -p no:mujintestcommon -v --log-level ERROR -m detector_ci_marker ${MUJIN_WORKSPACE_ROOT}/checkoutroot/testdetectors/python/mujintestdetection/test_detector.py --resource "
+    # alias jb="cd ~/mujin/jhbuildappcontroller/; git checkout master; git pull origin master; mujin_jhbuildcommon_updatejhbuildcommon.bash; mujin_jhbuildcommon_initjhbuild.bash; jhbuild sysdeps --install; jhbuild"
+    export MUJIN_JHBUILD_DOWNLOADS_DIR=${MUJIN_WORKSPACE_ROOT}/downloads
+    source ${MUJINJH_APPCONTROLLER_HOME}/setuptestdev.bash
+
+    return 0
+}
+
+# mopt_set_test () {
+#     if [[ -z $2 ]]; then
+#         version=''
+#     else
+#         version='-'$2
+#     fi
+
+#     for d in bin devbin lib include share debug; do
+#     sudo ln -sfT /home/jiang/workspaces/$1/jhbuildappcontroller/docker/install/test.mcx${version}/${d} /opt/${d}
+#     done
+# } 
+
+# mopt_set () {
+
+#     local buildmode=${2:-"release"}
+#     local verrsion=${3:-""}
+#     # if [[ -z $2 ]]; then
+#     #     version=''
+#     # else
+#     #     version='-'$2
+#     # fi
+
+#     for d in bin devbin lib include share debug; do
+#     sudo ln -sfT /home/jiang/workspaces/$1/jhbuildappcontroller/docker/install/${buildmode}.mcx${version}/${d} /opt/${d}
+#     done
+# } 
+
