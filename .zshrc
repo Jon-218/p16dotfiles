@@ -125,12 +125,35 @@ mujin_workspace_make() {
 
 
 mset() {
+    if [[ -z $1 ]]; then
+        print -u2 "usage: mset <workspace-id>"
+        return 1
+    fi
     export MUJIN_WORKSPACE_ID=$1
 
-    # bash -lic "mset $MUJIN_WORKSPACE_ID; zsh"
-    conda deactivate
-    bash -lic "mujin_workspace_set $MUJIN_WORKSPACE_ID; zsh"
-    # export PS1=$PS1(ws:$MUJIN_WORKSPACE_ID)
+    # 退出当前 conda 环境(未激活时静默忽略)
+    conda deactivate 2>/dev/null
+
+    # mujin_workspace_set 以及它 source 的 setuprepoenv.bash 都是 bash 脚本,
+    # zsh 无法直接 source。所以仍让 bash 执行,跑完后把产生的环境变量 dump 回
+    # 当前 zsh —— 不再 `; zsh` 嵌套出新 shell,变量直接在本 shell 生效。
+    #
+    # 用非交互 `bash -lc`(不是 -i):交互式 bash 会开 job control 抢终端,在
+    # 进程替换 <(...) 里不是前台进程组会被挂起 → 卡住。这里显式 source
+    # .workspaceswitcher 来定义函数(不依赖 .bashrc),并把 stdin 接到 /dev/null。
+    #
+    #   mujin_workspace_set ... 1>&2  : 把函数的彩色提示输出留在终端,不污染 dump
+    #   env -0                        : 以 NUL 分隔输出环境,read -d '' 逐条读回
+    local key val
+    while IFS='=' read -r -d '' key val; do
+        case $key in
+            # 不要覆盖 shell 自身 / 会话相关变量(PS1 是 bash 风格,导回 zsh 是乱码)
+            PWD|OLDPWD|SHLVL|_|SHELL|PS1|PROMPT|RPROMPT) continue ;;
+            BASH*|ZSH*|FUNCNAME) continue ;;
+        esac
+        export "$key=$val"
+    done < <(bash -lc 'source "$HOME/.workspaceswitcher"; mujin_workspace_set "$1" 1>&2; env -0' bash "$1" </dev/null)
+    export VIRTUAL_ENV="ws_$MUJIN_WORKSPACE_ID"
 }
 
 mlist() {
